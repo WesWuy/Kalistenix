@@ -1,0 +1,9 @@
+{
+  "name": "kalistenix",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Progressive bodyweight training for every level.",
+  "scripts": { "dev": "node server.js", "start": "node server.js", "test": "node --test", "check": "node --check app.js && node --check training.js && node --check server.js" },
+  "engines": { "node": ">=22" }
+}
