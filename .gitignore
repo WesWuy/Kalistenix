@@ -5,3 +5,5 @@ node_modules/
 .DS_Store
 coverage/
 work/
+playwright-report/
+test-results/

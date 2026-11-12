@@ -16,7 +16,7 @@ cd Kalistenix
 node server.js
 ```
 
-Open **http://localhost:4173**. No package installation or build step is required. Set the `PORT` environment variable to change the port. The development server listens on loopback only.
+Open **http://localhost:4173**. No package installation or build step is required to preview the app: the pinned Supabase browser SDK bundle is committed in `vendor/`. For development checks, run `npm ci`. Set the `PORT` environment variable to change the port. The development server listens on loopback only.
 
 ## Included
 
@@ -34,9 +34,11 @@ Open **http://localhost:4173**. No package installation or build step is require
 
 ## Data and scope
 
-This is a **browser-local MVP**. It has no authentication, cloud database, payments, subscriptions, coach messaging, video library, or cross-device synchronization. Profile and workout data are stored under `kalistenix.v1` in localStorage. Export a backup before clearing browser data or changing devices. Restore replaces the local dataset, including any active workout.
+The app supports **local guest training and optional Supabase accounts**. Email magic links enable cloud saving of profiles, saved workouts, and milestones. Apply the [Supabase setup](supabase/README.md) before using cloud saving. Active workouts remain device-local until saved. Guest data stays under `kalistenix.v1`; signed-in accounts have separate caches and never automatically inherit guest data. Sign-out restores the guest profile.
 
-The app has no analytics or application API calls. Google Fonts is used for typography; system fonts provide a fallback. Font loading sends a normal request to Google's font service. It does not send workout data. Hosting providers may retain ordinary request logs.
+Cloud saves use per-user access rules and revision checks. Offline edits remain pending and conflicting devices require an explicit choice. Export a backup before clearing browser data. Restore replaces the current guest/account dataset, including any active workout. There are no payments, subscriptions, coach messaging, or videos.
+
+The app has no analytics. Signed-in cloud saving sends training data to the configured Supabase project; sign-in sends the email address to Supabase Auth. Google Fonts is used for typography; system fonts provide a fallback. Font loading sends a normal request to Google's font service. It does not send workout data. Hosting providers may retain ordinary request logs.
 
 Every exercise has original, exercise-specific SVG artwork, with two labeled positions in its movement guide. Equipment, support points, view direction, and movement arrows help distinguish the variations. Library cards, plan thumbnails, and workout guides use the same illustrations. Graphics remain sharp at any screen size and require no external image service. These are simplified position illustrations, to be read alongside technique cues, not anatomical models or a substitute for coaching.
 
@@ -61,6 +63,11 @@ Background references:
 | `training.js` | Exercise catalog, plan generation, progression, date helpers, validation |
 | `illustrations.js` | Original exercise artwork and paired movement guides for all 22 exercises |
 | `styles.css` | Responsive design system |
+| `cloud-store.js` | Account-scoped cache, retry, and conflict handling |
+| `cloud-api.js` | Authenticated cloud reads and revision-checked writes |
+| `supabase-config.js` | Public project URL and publishable key |
+| `supabase/` | Database migration and activation instructions |
+| `vendor/` | Pinned Supabase browser SDK and dependency licenses |
 | `server.js` | Minimal, allowlisted local preview server |
 | `tests/training.test.js` | Node test suite for training logic and data boundaries |
 | `.github/workflows/checks.yml` | Syntax and logic checks; GitHub Pages deployment from main |
@@ -68,19 +75,25 @@ Background references:
 ## Checks
 
 ```sh
-node --check app.js
-node --check training.js
-node --check server.js
-node --test
+npm ci
+npm run check
+npm test
+npx playwright install chromium
+npm run test:browser
 ```
 
-The plan test covers every combination of level, goal, training frequency, and equipment selection, including both split-session variants. Other tests cover week boundaries, progression gates, and invalid backup data.
+The plan test covers every level, goal, training frequency, and equipment
+combination. Other tests cover progression, invalid backups, cloud retries,
+account isolation, conflicts, and PostgreSQL access policies. Browser tests mock
+Supabase; live email delivery and deployed database policies need a post-setup
+check. To rebuild the committed browser SDK after a dependency change, run
+`npm run build:vendor`.
 
 ## Deploy
 
-The app is static. Publish `index.html`, `app.js`, `training.js`, `illustrations.js`, `styles.css`, and `icon.svg` together on an HTTPS static host. No runtime secrets, backend service, or build output are required. Relative asset paths support a repository subpath such as `/Kalistenix/`. `server.js` is a local development utility and is not needed on a static host.
+The app is static. Publish `index.html`, `app.js`, `training.js`, `illustrations.js`, `styles.css`, `icon.svg`, `cloud-store.js`, `cloud-api.js`, `supabase-config.js`, and the `vendor/` directory together on an HTTPS static host. Guest mode needs no backend. Accounts use the configured Supabase project after its SQL and Auth setup. No server-side secrets belong in the static app. Relative asset paths support a repository subpath such as `/Kalistenix/`. `server.js` is a local development utility and is not needed on a static host.
 
-GitHub Pages is configured with GitHub Actions as its publishing source. The `App checks and Pages` workflow tests every push and pull request, then publishes only the six static app files after successful checks on `main`. Pull requests never deploy. The workflow can also be run manually from the Actions tab.
+GitHub Pages is configured with GitHub Actions as its publishing source. The `App checks and Pages` workflow tests every push and pull request, then publishes the static app files and vendor bundle after successful checks on `main`. Pull requests never deploy. The workflow can also be run manually from the Actions tab.
 
 The production URL is **https://weswuy.github.io/Kalistenix/**. HTTPS or localhost is required for `crypto.randomUUID()` when starting workouts. The app is not yet an installable or offline-cached PWA.
 
@@ -90,6 +103,6 @@ Browser storage is separate for localhost and the hosted app. To move existing l
 
 1. Coach review of exercise technique, progression gates, and a more complete advanced skill catalog.
 2. Per-exercise substitutions and baseline assessment rather than level-wide defaults.
-3. Authenticated, per-user storage and tested backup migration for cross-device use.
+3. Activate and validate Supabase in production; extend account management and backup migration tooling.
 4. Licensed technique videos, accessible captions, and an installable offline experience.
 5. Broader device, accessibility, and user testing of the hosted release.

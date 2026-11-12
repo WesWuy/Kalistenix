@@ -13,16 +13,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --check app.js
-      - run: node --check training.js
-      - run: node --check illustrations.js
-      - run: node --check server.js
-      - run: node --test
+      - run: npm ci
+      - run: npm run build:vendor
+      - run: npm run check
+      - run: npm test
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
       - name: Prepare static app
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         run: |
           mkdir -p _site
-          cp index.html app.js training.js illustrations.js styles.css icon.svg _site/
+          cp index.html app.js training.js illustrations.js styles.css icon.svg cloud-store.js cloud-api.js supabase-config.js _site/
+          cp -R vendor _site/
       - name: Upload Pages artifact
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v4

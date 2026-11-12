@@ -36,3 +36,12 @@
 @media(max-width:600px){.exercise-visual{height:150px}.exercise-visual>.exercise-art{padding:22px 2px 5px}.visual-label{top:11px;left:9px;font-size:6px;letter-spacing:1px}.visual-angle{top:11px;right:9px;font-size:5px;letter-spacing:.5px}.view-count{font-size:6px;padding:1px 3px;margin-left:0}.library-card .text-button{gap:5px;font-size:8px}.hero-art{opacity:.82;top:75px;right:-7px;width:47%}.hero-art>.exercise-art{height:auto}.exercise-thumbnail{width:48px;height:39px}.exercise-row{gap:8px}.exercise-prescription span{max-width:88px}.guide-topline{font-size:7px;letter-spacing:.7px;padding:11px}.guide-topline>span:last-child{font-size:6px}.movement-frame{padding:14px 4px}.movement-frame figcaption{font-size:9px;gap:6px;min-height:25px;margin-top:8px}.visual-cue{font-size:10px}.movement-guide{margin-top:18px}dialog:has(.movement-guide){width:min(580px,calc(100% - 20px));padding:18px}}
 @media(max-width:370px){.movement-frames{grid-template-columns:1fr}.movement-frame+.movement-frame{border-left:0;border-top:1px solid #3a4c30}.movement-frame>.exercise-art{max-height:190px}.view-count{display:none}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;scroll-behavior:auto!important}}
+
+/* Account controls remain available on desktop and above the mobile navigation. */
+.account-bar{margin-left:235px;padding:13px 43px;border-bottom:1px solid var(--border);background:#182013;display:flex;justify-content:space-between;align-items:center;gap:16px;min-height:70px}
+.account-copy{min-width:0}.account-copy strong{display:block;font-size:12px;overflow-wrap:anywhere}.account-copy [role=status]{display:block;font-size:11px;color:var(--muted)}
+.account-actions{display:flex;flex-wrap:wrap;gap:8px;flex-shrink:0}.account-actions .button{min-height:36px;padding:8px 12px;font-size:11px}
+#app[aria-busy=true]{opacity:.55}
+@media(max-width:1200px){.account-bar{margin-left:205px;padding:13px 28px}}
+@media(max-width:900px){.account-bar{margin-left:75px}}
+@media(max-width:600px){.account-bar{margin-left:0;padding:13px 18px;align-items:flex-start;flex-direction:column;gap:8px}.account-actions{width:100%}.account-actions .button{white-space:normal}.account-copy strong{font-size:11px}.account-copy [role=status]{font-size:10px}}

@@ -1,7 +1,17 @@
+import { CloudStore, cloudData, emptyData } from './cloud-store.js';
+import { trainingApi } from './cloud-api.js';
+import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from './supabase-config.js';
 import { exerciseIllustration, exerciseGuide, ILLUSTRATIONS } from './illustrations.js';
 import { LEVELS, GOALS, EQUIPMENT, DEFAULT_PROFILE, EXERCISES, PATHS, getExercise, validateProfile, localDate, weekDates, schedule, makePlan, completedSets, validHistory } from './training.js';
 
 const KEY = 'kalistenix.v1';
+let storageKey = KEY;
+let accountUser = null;
+let cloud = null;
+let supabase = null;
+let accountLoading = false;
+let authReady = false;
+let authFailed = false;
 const app = document.querySelector('#app');
 const modal = document.querySelector('#modal');
 const escape = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -22,7 +32,11 @@ let query = '';
 function validActive(s) {
   return s && typeof s.id === 'string' && Number.isFinite(s.startedAt) && Number.isFinite(s.restUntil) && Array.isArray(s.sets) && s.sets.every(t => getExercise(t.exerciseId) && Number.isInteger(t.index) && t.index >= 0 && t.index < 10 && Number.isFinite(t.value) && t.value > 0 && t.value <= 999) && s.plan && typeof s.plan.title === 'string' && Number.isFinite(s.plan.rest) && Array.isArray(s.plan.exercises) && s.plan.exercises.length > 0 && s.plan.exercises.every(e => getExercise(e.id) && Number.isInteger(e.sets) && e.sets >= 1 && e.sets <= 4);
 }
-function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { storageWarning = true; toast('Device storage is unavailable. Export your progress before closing.'); } }
+function save() {
+  try { localStorage.setItem(storageKey, JSON.stringify(state)); }
+  catch { storageWarning = true; toast('Device storage is unavailable. Export your progress before closing.'); }
+  if (accountUser && cloud) cloud.save(state);
+}
 let toastTimeout;
 function toast(text) { const t = document.querySelector('#toast'); t.textContent = text; t.classList.add('visible'); clearTimeout(toastTimeout); toastTimeout = setTimeout(() => t.classList.remove('visible'), 4200); }
 function openModal(title, body) { modal.innerHTML = `<div class="modal-head"><h2 id="dialog-title">${title}</h2><button class="icon-button" data-action="close" aria-label="Close dialog">${icon('close')}</button></div>${body}`; modal.setAttribute('aria-labelledby', 'dialog-title'); modal.showModal(); }
@@ -33,7 +47,7 @@ const dayLabel = date => new Date(date + 'T12:00:00').toLocaleDateString(undefin
 
 function render() {
   const nav = [['home', 'Overview'], ['plan', 'My plan'], ['skills', 'Skill paths'], ['library', 'Exercise library'], ['progress', 'My progress']];
-  app.innerHTML = `<aside class="sidebar"><a class="brand" href="#home" aria-label="Kalistenix home"><img src="./icon.svg" alt="">kalistenix<span>®</span></a><div class="sidebar-label">YOUR TRAINING SPACE</div><nav aria-label="Main navigation">${nav.map(([id, label]) => `<button aria-label="${label}" data-page="${id}" class="nav-item ${page === id ? 'active' : ''}" ${page === id ? 'aria-current="page"' : ''}>${icon(id)}<span>${label}</span>${page === id ? '<i></i>' : ''}</button>`).join('')}</nav><div class="sidebar-bottom"><div class="small-manifesto">No shortcuts.<br>Just <em>you</em>, getting stronger.</div><div class="local-note"><span class="status-dot"></span> Progress saved on this device</div><button class="profile" data-action="profile"><span class="avatar">${escape(state.profile.name ? state.profile.name.slice(0, 2).toUpperCase() : 'KX')}</span><span><strong>${escape(state.profile.name || 'Your training profile')}</strong><small>${state.profile.level} athlete</small></span>${icon('settings')}</button></div></aside><div class="workspace"><header class="topbar"><span class="breadcrumb">YOUR JOURNEY <span>/</span> ${escape(page === 'workout' ? 'WORKOUT' : nav.find(n => n[0] === page)?.[1].toUpperCase() || 'OVERVIEW')}</span><div class="topbar-right"><span class="today-date">${new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</span><button class="level-pill" data-action="profile"><span class="status-dot"></span>${state.profile.level}${icon('settings')}</button></div></header><main id="main" tabindex="-1">${storageWarning ? '<div class="notice">Browser storage is unavailable or could not be read. Export new progress before closing.</div>' : ''}${page === 'home' ? home() : page === 'plan' ? planPage() : page === 'skills' ? skillsPage() : page === 'library' ? libraryPage() : page === 'progress' ? progressPage() : workoutPage()}</main><footer>BUILT BY YOU. ONE REP AT A TIME.<button data-action="about">Training guidance & privacy ↗</button></footer></div>`;
+  app.innerHTML = `<aside class="sidebar"><a class="brand" href="#home" aria-label="Kalistenix home"><img src="./icon.svg" alt="">kalistenix<span>®</span></a><div class="sidebar-label">YOUR TRAINING SPACE</div><nav aria-label="Main navigation">${nav.map(([id, label]) => `<button aria-label="${label}" data-page="${id}" class="nav-item ${page === id ? 'active' : ''}" ${page === id ? 'aria-current="page"' : ''}>${icon(id)}<span>${label}</span>${page === id ? '<i></i>' : ''}</button>`).join('')}</nav><div class="sidebar-bottom"><div class="small-manifesto">No shortcuts.<br>Just <em>you</em>, getting stronger.</div><div class="local-note"><span class="status-dot"></span> ${accountUser ? 'Account progress · see cloud status above' : 'Guest progress on this device'}</div><button class="profile" data-action="profile"><span class="avatar">${escape(state.profile.name ? state.profile.name.slice(0, 2).toUpperCase() : 'KX')}</span><span><strong>${escape(state.profile.name || 'Your training profile')}</strong><small>${state.profile.level} athlete</small></span>${icon('settings')}</button></div></aside><div class="workspace"><header class="topbar"><span class="breadcrumb">YOUR JOURNEY <span>/</span> ${escape(page === 'workout' ? 'WORKOUT' : nav.find(n => n[0] === page)?.[1].toUpperCase() || 'OVERVIEW')}</span><div class="topbar-right"><span class="today-date">${new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</span><button class="level-pill" data-action="profile"><span class="status-dot"></span>${state.profile.level}${icon('settings')}</button></div></header><main id="main" tabindex="-1">${storageWarning ? '<div class="notice">Browser storage is unavailable or could not be read. Export new progress before closing.</div>' : ''}${page === 'home' ? home() : page === 'plan' ? planPage() : page === 'skills' ? skillsPage() : page === 'library' ? libraryPage() : page === 'progress' ? progressPage() : workoutPage()}</main><footer>BUILT BY YOU. ONE REP AT A TIME.<button data-action="about">Training guidance & privacy ↗</button></footer></div>`;
   tick();
 }
 function heading(eyebrow, title, subtitle, action = '') { return `<div class="page-heading"><div><p class="eyebrow">${eyebrow}</p><h1>${title}</h1><p class="muted">${subtitle}</p></div>${action}</div>`; }
@@ -71,7 +85,7 @@ function start() { if (state.active) { page = 'workout'; render(); window.scroll
 function finish() { const s = state.active; if (!s || !s.sets.length) return; openModal('You showed up. That counts.', `<p class="muted">${s.sets.length} of ${totalSets(s.plan)} sets logged. Take a moment to reflect.</p><form id="finish-form"><label class="field">How did this session feel?<select name="effort"><option>Right on</option><option>Easy</option><option>Hard</option></select></label><label class="check-label"><input type="checkbox" name="form">My logged sets used controlled, pain-free form.</label><p class="fine-print">Your feedback helps determine when to suggest a harder variation. No need to rush.</p><button class="button primary full" type="submit">Save workout ${icon('check')}</button></form>`); }
 function exerciseModal(id) { const e = getExercise(id); if (!e) return; openModal(e.name, `<div class="guide-meta"><span class="pill">${e.level}</span><span>${e.pattern} · ${e.equipment.join(', ') || 'No equipment'}</span></div>${exerciseGuide(e.id)}<h3>The movement</h3><p>${e.cue}</p><h3>Make it easier</h3><p>${e.easier}</p><h3>Practice target</h3><p>${e.min}–${e.max} ${e.unit}. Start at the low end; form comes first.</p><p class="fine-print">Illustrations show key positions; use the technique cues for the full movement. Advanced skills benefit from qualified coaching.</p>`); }
 function exportData() { const blob = new Blob([JSON.stringify({ version: 1, profile: state.profile, history: state.history, mastered: state.mastered }, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `kalistenix-${localDate()}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); toast('Progress exported. Keep your backup somewhere safe.'); }
-function about() { openModal('Built for your next level.', `<h3>Training guidance</h3><p>Kalistenix offers general adult fitness templates. The exercise selection, rep ranges, and skill milestones are product starting points, not individually validated prescriptions. Choose a level you can perform with control; seek qualified guidance for injuries or advanced skills.</p><p>Our approach draws on gradual progression and regular resistance training: <a href="https://www.nhs.uk/live-well/exercise/strength-exercises/" target="_blank" rel="noopener">NHS strength exercises</a> and the <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC12965823/" target="_blank" rel="noopener">2026 ACSM position stand</a>.</p><h3>Your data stays here</h3><p>Your profile and workout history are stored in this browser. There is no account, cloud sync, analytics, or server database. Clearing browser data removes your progress. Export a backup from My progress.</p><p>Changing browsers or devices does not move your data automatically. Import a backup to restore it.</p>`); }
+function about() { openModal('Built for your next level.', `<h3>Training guidance</h3><p>Kalistenix offers general adult fitness templates. The exercise selection, rep ranges, and skill milestones are product starting points, not individually validated prescriptions. Choose a level you can perform with control; seek qualified guidance for injuries or advanced skills.</p><p>Our approach draws on gradual progression and regular resistance training: <a href="https://www.nhs.uk/live-well/exercise/strength-exercises/" target="_blank" rel="noopener">NHS strength exercises</a> and the <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC12965823/" target="_blank" rel="noopener">2026 ACSM position stand</a>.</p><h3>Your training data</h3><p>Guest progress stays in this browser. Signing in with an email link enables Supabase storage for your profile, completed or partial saved sessions, and skill milestones. Your email is used for account access. Each account can access only its own cloud progress.</p><p>Account data is also cached on this device. Active workouts stay on the device where you started them; save a session to sync it. Cloud saving can fail when offline: check the account status and retry when connected. Export a backup before clearing browser data.</p><p>Guest progress is never uploaded automatically. To move it into an account, export your guest progress, sign in, then restore that backup from My progress. Restoring replaces the account’s saved progress. Signing out returns to this device’s separate guest profile.</p>`); }
 
 document.addEventListener('click', event => {
   const el = event.target.closest('button, a.brand'); if (!el) return;
@@ -101,6 +115,7 @@ document.addEventListener('click', event => {
 });
 function pauseActive() { const s = state.active; if (s?.resumedAt) { s.elapsedMs = (s.elapsedMs || 0) + Date.now() - s.resumedAt; s.resumedAt = null; save(); } }
 document.addEventListener('submit', event => {
+  if (event.target.id === 'signin-form') return;
   event.preventDefault(); const form = event.target; const data = new FormData(form);
   if (form.id === 'profile-form') { const profile = { name: String(data.get('name')).trim(), level: data.get('level'), goal: data.get('goal'), days: Number(data.get('days')), equipment: data.getAll('equipment') }; if (!validateProfile(profile)) return; state.profile = profile; state.configured = true; save(); modal.close(); render(); toast('Your plan is ready. Let’s build.'); }
   if (form.dataset.setForm && state.active) { const value = Number(data.get('value')); if (!Number.isInteger(value) || value < 1 || value > 999) return; const id = form.dataset.setForm; const index = Number(form.dataset.index); if (state.active.sets.some(s => s.exerciseId === id && s.index === index)) return; state.active.sets.push({ exerciseId: id, index, value }); state.active.restUntil = Date.now() + state.active.plan.rest * 1000; save(); render(); toast('Set logged. Take your rest.'); }
@@ -121,3 +136,134 @@ window.addEventListener('pagehide', pauseActive);
 // A restored session starts paused; time spent away never counts as training time.
 if (state.active) { state.active.resumedAt = null; save(); }
 render();
+
+const syncLabels = {
+  guest: 'Guest · saved on this device',
+  loading: 'Checking cloud progress…',
+  pending: 'Changes waiting to save',
+  saving: 'Saving to your account…',
+  synced: 'Saved to your account',
+  conflict: 'Another device has different progress',
+  error: 'Cloud unavailable · retry to sync',
+  'storage-error': 'Cloud saved · device storage unavailable',
+};
+function renderAccount() {
+  const status = cloud?.status || 'guest';
+  document.querySelector('#account-bar').innerHTML = `<div class="account-copy"><strong>${accountUser ? escape(accountUser.email || 'Your account') : 'Take your progress with you.'}</strong><span role="status">${accountUser ? syncLabels[status] : authFailed ? 'Sign-in unavailable. Guest training still works.' : syncLabels.guest}</span></div><div class="account-actions">${accountUser ? `${['error', 'storage-error'].includes(status) ? '<button class="button secondary" data-account="retry">Retry cloud save</button>' : ''}${status === 'conflict' ? '<button class="button secondary" data-account="conflict">Review differences</button>' : ''}<button class="button secondary" data-account="manage">Account</button>` : `<button class="button secondary" data-account="signin" ${authReady ? '' : 'disabled'}>${authFailed ? 'Sign-in unavailable' : authReady ? 'Sign in / Create account' : 'Connecting…'}</button>`}</div>`;
+  app.inert = accountLoading;
+  app.setAttribute('aria-busy', String(accountLoading));
+}
+function accountModal() {
+  if (!accountUser) {
+    openModal('Keep building. On any device.', `<p>Sign in or create an account with an email link. Your saved workouts, profile, and milestones will sync to your account.</p><form id="signin-form"><label class="field">Email address<input name="email" type="email" autocomplete="email" maxlength="254" placeholder="you@example.com" required></label><button class="button primary full" type="submit">Send sign-in link</button><p id="signin-status" role="status" class="fine-print"></p></form><p class="fine-print">Open the link in this same browser. Your existing guest progress stays separate. To move it later, export it first and restore the backup after signing in.</p>`);
+    return;
+  }
+  openModal('Your training account', `<p>Signed in as <strong>${escape(accountUser.email || 'your account')}</strong>.</p><p>${syncLabels[cloud.status]}</p><p>Your saved sessions, profile, and milestones sync across devices. An in-progress workout stays on this device until you save it.</p><p>To bring in guest progress, sign out, export it from My progress, then sign in and restore the backup. Restore replaces this account’s progress.</p><button class="button secondary full" data-action="export">Export current progress</button><button class="button secondary full spaced" data-account="refresh">Check for cloud updates</button><button class="button secondary full spaced" data-account="signout">Sign out</button><p class="fine-print">${cloud.cache?.dirty ? 'Some changes have not reached the cloud. They stay cached for this account on this device. Export a backup before signing out.' : 'Signing out returns to your separate guest profile. Account progress remains cached on this device for your next sign-in.'}</p>`);
+}
+function conflictModal() {
+  openModal('Choose which progress to keep.', `<p>This device and your account have different progress. Cloud saving is paused so neither copy is overwritten automatically.</p><p>Export this device’s progress before choosing. “Use cloud progress” replaces the profile, journal, and milestones shown here. “Keep this device’s progress” replaces the account’s cloud copy.</p><button class="button secondary full" data-action="export">Export this device’s progress first</button><button class="button primary full spaced" data-account="use-cloud">Use cloud progress</button><button class="button secondary full spaced" data-account="use-local">Keep this device’s progress</button>`);
+}
+function loadLocal(key) {
+  try {
+    const value = JSON.parse(localStorage.getItem(key) || 'null');
+    if (value && validateProfile(value.profile) && validHistory(value.history)) return {
+      ...emptyData(), ...cloudData({ ...value, mastered: Array.isArray(value.mastered) ? value.mastered.filter(id => getExercise(id)) : [] }),
+      active: validActive(value.active) ? { ...value.active, resumedAt: null } : null,
+    };
+  } catch { storageWarning = true; }
+  return { ...emptyData(), active: null };
+}
+async function switchAccount(user) {
+  if ((user?.id || null) === (accountUser?.id || null)) return;
+  pauseActive();
+  accountUser = user || null;
+  storageKey = user ? `${KEY}.user.${user.id}` : KEY;
+  pendingImport = null;
+  modal.close();
+  page = 'home';
+  accountLoading = !!user;
+  state = loadLocal(storageKey);
+  render();
+  renderAccount();
+  await cloud.connect(user?.id || null);
+}
+document.addEventListener('click', async event => {
+  const button = event.target.closest('[data-account]');
+  if (!button || !authReady) return;
+  const action = button.dataset.account;
+  if (action === 'signin' || action === 'manage') accountModal();
+  if (action === 'conflict') conflictModal();
+  if (action === 'retry' || action === 'refresh') { modal.close(); await cloud.sync(); }
+  if (action === 'use-cloud' || action === 'use-local') {
+    button.disabled = true;
+    await cloud.resolve(action === 'use-cloud' ? 'cloud' : 'local');
+    modal.close();
+    if (cloud.status === 'conflict') toast('Could not resolve this yet. Check your connection and try again.');
+  }
+  if (action === 'signout') {
+    button.disabled = true;
+    const { error } = await supabase.auth.signOut({ scope: 'local' });
+    if (error) { button.disabled = false; toast('Could not sign out. Please try again.'); }
+    else await switchAccount(null);
+  }
+});
+document.addEventListener('submit', async event => {
+  if (event.target.id !== 'signin-form') return;
+  event.preventDefault();
+  const form = event.target;
+  const button = form.querySelector('button');
+  const status = form.querySelector('#signin-status');
+  button.disabled = true;
+  status.textContent = 'Sending your link…';
+  try {
+    const { error } = await supabase.auth.signInWithOtp({
+      email: String(new FormData(form).get('email')).trim(),
+      options: { emailRedirectTo: new URL('./', location.href).href },
+    });
+    if (error) throw error;
+    status.textContent = 'Check your email, including spam. Open the sign-in link in this same browser. You can close this dialog and keep training.';
+    button.textContent = 'Send another link';
+  } catch (error) {
+    status.textContent = error.status === 429 ? 'Too many requests. Please wait a few minutes before trying again.' : 'Could not send the link. Check your connection and email address, then try again.';
+  } finally { button.disabled = false; }
+});
+async function initializeAccount() {
+  renderAccount();
+  try {
+    const { createClient } = await import('./vendor/supabase.js');
+    supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+      auth: { flowType: 'pkce', storageKey: 'kalistenix.auth.v1', persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+      global: { fetch: (url, options) => fetch(url, { ...options, signal: options?.signal || AbortSignal.timeout(15000) }) },
+    });
+    cloud = new CloudStore({
+      remote: trainingApi(supabase, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY),
+      storage: localStorage,
+      onData(data) {
+        const changed = JSON.stringify(cloudData(state)) !== JSON.stringify(data);
+        state = { ...data, active: state.active };
+        try { localStorage.setItem(storageKey, JSON.stringify(state)); } catch { storageWarning = true; }
+        if (changed) render();
+      },
+      onStatus(status) {
+        if (!['loading', 'saving'].includes(status)) accountLoading = false;
+        renderAccount();
+      },
+    });
+    const { data, error } = await supabase.auth.getSession();
+    if (error) toast('This sign-in link could not be used. Request a new link in this browser.');
+    authReady = true;
+    await switchAccount(data.session?.user || null);
+    supabase.auth.onAuthStateChange((_event, session) => {
+      // Supabase holds its auth lock inside this callback. Start I/O after it returns.
+      setTimeout(() => { void switchAccount(session?.user || null); }, 0);
+    });
+    renderAccount();
+    window.addEventListener('online', () => { void cloud.sync(); });
+    window.addEventListener('focus', () => { if (accountUser && page !== 'workout' && !modal.open) void cloud.sync(); });
+  } catch {
+    authFailed = true;
+    accountLoading = false;
+    renderAccount();
+  }
+}
+void initializeAccount();
