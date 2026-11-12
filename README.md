@@ -4,6 +4,8 @@
 
 A responsive calisthenics web app for beginner, intermediate, and advanced athletes. This first release focuses on a useful individual training loop: personalize a plan, practice with guidance, log the work, and review progress.
 
+**Live app: [weswuy.github.io/Kalistenix](https://weswuy.github.io/Kalistenix/)**
+
 ## Run locally
 
 Install Node.js 22 or later, then:
@@ -60,7 +62,7 @@ Background references:
 | `styles.css` | Responsive design system |
 | `server.js` | Minimal, allowlisted local preview server |
 | `tests/training.test.js` | Node test suite for training logic and data boundaries |
-| `.github/workflows/checks.yml` | Syntax and logic checks on pushes and pull requests |
+| `.github/workflows/checks.yml` | Syntax and logic checks; GitHub Pages deployment from main |
 
 ## Checks
 
@@ -77,7 +79,11 @@ The plan test covers every combination of level, goal, training frequency, and e
 
 The app is static. Publish `index.html`, `app.js`, `training.js`, `styles.css`, and `icon.svg` together on an HTTPS static host. No runtime secrets, backend service, or build output are required. Relative asset paths support a repository subpath such as `/Kalistenix/`. `server.js` is a local development utility and is not needed on a static host.
 
-Hosting is not provisioned by this initial commit. HTTPS or localhost is required for `crypto.randomUUID()` when starting workouts. The app is not yet an installable or offline-cached PWA.
+GitHub Pages is configured with GitHub Actions as its publishing source. The `App checks and Pages` workflow tests every push and pull request, then publishes only the five static app files after successful checks on `main`. Pull requests never deploy. The workflow can also be run manually from the Actions tab.
+
+The production URL is **https://weswuy.github.io/Kalistenix/**. HTTPS or localhost is required for `crypto.randomUUID()` when starting workouts. The app is not yet an installable or offline-cached PWA.
+
+Browser storage is separate for localhost and the hosted app. To move existing local progress, export it from the local app and restore the backup on the live site.
 
 ## Next product milestones
 
@@ -85,4 +91,4 @@ Hosting is not provisioned by this initial commit. HTTPS or localhost is require
 2. Per-exercise substitutions and baseline assessment rather than level-wide defaults.
 3. Authenticated, per-user storage and tested backup migration for cross-device use.
 4. Licensed technique videos, accessible captions, and an installable offline experience.
-5. Hosted release with broader device, accessibility, and user testing.
+5. Broader device, accessibility, and user testing of the hosted release.
