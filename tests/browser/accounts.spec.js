@@ -123,6 +123,7 @@ test('saved workouts reach the cloud but active workout sets remain local', asyn
   await page.getByRole('button', { name: 'Finish partial workout' }).click();
   await page.getByRole('button', { name: 'Save workout', exact: true }).click();
   await expect.poll(() => writes.length).toBe(1);
+  await expect(page.locator('#toast')).toContainText('Way to go, Alice!');
   expect(writes[0].history[0].sets).toHaveLength(1);
   expect(writes[0]).not.toHaveProperty('active');
 });
