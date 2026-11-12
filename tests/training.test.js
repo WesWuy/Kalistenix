@@ -37,6 +37,9 @@ test('profile and backup validators reject malformed data', () => {
   assert.equal(validateProfile(DEFAULT_PROFILE), true);
   assert.equal(validateProfile({ ...DEFAULT_PROFILE, level: 'Expert' }), false);
   assert.equal(validateProfile({ ...DEFAULT_PROFILE, equipment: ['Unsafe anchor'] }), false);
+  assert.equal(validateProfile({ ...DEFAULT_PROFILE, gender: 'female' }), true);
+  assert.equal(validateProfile({ ...DEFAULT_PROFILE, gender: '' }), true);
+  assert.equal(validateProfile({ ...DEFAULT_PROFILE, gender: 'other-value' }), false);
   assert.equal(validHistory([]), true);
   assert.equal(validHistory([{ sets: [] }]), false);
   const session = { id: '1', date: '2026-11-12', title: 'Test', minutes: 15, completed: true, form: true, effort: 'Easy', sets: [{ exerciseId: 'push', index: 0, value: 8 }] };

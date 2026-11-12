@@ -21,9 +21,11 @@ Open **http://localhost:4173**. No package installation or build step is require
 ## Included
 
 - Responsive dashboard and navigation for phones, tablets, and desktops.
+- Guided three-step setup on first visit (level, goal and days, equipment, and an optional gender that picks which athlete appears in exercise images), skippable and editable later.
 - Profile setup with three experience levels, three goals, two to four training days, and available equipment.
 - Full-body plans for two or three days; alternating upper/lower sessions for four days.
 - 22 exercise entries with technique cues, rep or hold ranges, and easier options.
+- Focused workout mode: one exercise at a time with its movement guide, large -/+ steppers that carry forward your last value, auto-advance to the next exercise, +15s rest, an end-of-rest chime and vibration (with a sound toggle), and a screen wake lock where supported.
 - Workout logging by set, timed rests, undo, pause/resume, and partial-session saving.
 - Rest timers use an absolute deadline, so background-tab throttling does not extend the countdown.
 - Active workout persistence; training time pauses when the page is hidden or the session is left.
@@ -40,7 +42,7 @@ Cloud saves use per-user access rules and revision checks. Offline edits remain 
 
 The app has no analytics. Signed-in cloud saving sends training data to the configured Supabase project; sign-in sends the email address to Supabase Auth. Google Fonts is used for typography; system fonts provide a fallback. Font loading sends a normal request to Google's font service. It does not send workout data. Hosting providers may retain ordinary request logs.
 
-Every exercise has original, exercise-specific SVG artwork, with two labeled positions in its movement guide. Equipment, support points, view direction, and movement arrows help distinguish the variations. Library cards, plan thumbnails, and workout guides use the same illustrations. Graphics remain sharp at any screen size and require no external image service. These are simplified position illustrations, to be read alongside technique cues, not anatomical models or a substitute for coaching.
+Every exercise has two illustrated positions (44 images in `assets/exercises/`, about 2.4 MB in total, roughly 50 KB each). They were generated with Higgsfield (GPT Image 2.6) from a single character and style reference, so the same athlete, outfit, palette, and equipment appear throughout, and each pose was checked against the technique description. Library cards, plan thumbnails, the hero, and workout guides use the same images, which are served from the app itself with no runtime image service. There are two matching sets: the default athlete in `assets/exercises/` and a female athlete in `assets/exercises/female/` (44 more images, about 2.3 MB), made from their own style reference. A profile with gender set to Female sees the female set; Male or Prefer not to say sees the default set. Each image carries alt text built from the exercise name, position label, and description. They are position illustrations to be read alongside the technique cues, not a substitute for coaching.
 
 ## Training content
 
@@ -61,7 +63,8 @@ Background references:
 | `index.html` | Application shell and metadata |
 | `app.js` | UI, navigation, session state, storage, backup flow |
 | `training.js` | Exercise catalog, plan generation, progression, date helpers, validation |
-| `illustrations.js` | Original exercise artwork and paired movement guides for all 22 exercises |
+| `illustrations.js` | Exercise names, view, position labels, descriptions and cues; renders the artwork and movement guides |
+| `assets/exercises/` | Two JPEG illustrations per exercise: `<exercise-id>-0.jpg` (first position) and `<exercise-id>-1.jpg` (second); `female/` holds the matching female-athlete set |
 | `styles.css` | Responsive design system |
 | `cloud-store.js` | Account-scoped cache, retry, and conflict handling |
 | `cloud-api.js` | Authenticated cloud reads and revision-checked writes |
@@ -91,7 +94,7 @@ check. To rebuild the committed browser SDK after a dependency change, run
 
 ## Deploy
 
-The app is static. Publish `index.html`, `app.js`, `training.js`, `illustrations.js`, `styles.css`, `icon.svg`, `cloud-store.js`, `cloud-api.js`, `supabase-config.js`, and the `vendor/` directory together on an HTTPS static host. Guest mode needs no backend. Accounts use the configured Supabase project after its SQL and Auth setup. No server-side secrets belong in the static app. Relative asset paths support a repository subpath such as `/Kalistenix/`. `server.js` is a local development utility and is not needed on a static host.
+The app is static. Publish `index.html`, `app.js`, `training.js`, `illustrations.js`, `styles.css`, `icon.svg`, `cloud-store.js`, `cloud-api.js`, `supabase-config.js`, the `vendor/` directory, and the `assets/exercises/` directory together on an HTTPS static host. Guest mode needs no backend. Accounts use the configured Supabase project after its SQL and Auth setup. No server-side secrets belong in the static app. Relative asset paths support a repository subpath such as `/Kalistenix/`. `server.js` is a local development utility and is not needed on a static host.
 
 GitHub Pages is configured with GitHub Actions as its publishing source. The `App checks and Pages` workflow tests every push and pull request, then publishes the static app files and vendor bundle after successful checks on `main`. Pull requests never deploy. The workflow can also be run manually from the Actions tab.
 

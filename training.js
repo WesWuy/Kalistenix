@@ -1,6 +1,8 @@
 export const LEVELS = ['Beginner', 'Intermediate', 'Advanced'];
 export const GOALS = ['Build strength', 'Unlock skills', 'Build consistency'];
 export const EQUIPMENT = ['Pull-up bar', 'Resistance band', 'Parallel bars'];
+// Optional; only used to choose which athlete appears in exercise images. '' = not specified.
+export const GENDERS = ['', 'female', 'male'];
 export const DEFAULT_PROFILE = { name: '', level: 'Beginner', goal: 'Build strength', days: 3, equipment: [] };
 const exercise = (id, name, pattern, level, equipment, min, max, unit, cue, easier) => ({ id, name, pattern, level, equipment, min, max, unit, cue, easier });
 export const EXERCISES = [
@@ -35,7 +37,7 @@ export const PATHS = [
   { id: 'legs', title: 'Single-leg strength', subtitle: 'Build from the ground up.', pattern: 'Legs', steps: ['squat', 'lunge', 'pistol'] }
 ];
 export function validateProfile(value) {
-  return !!value && typeof value.name === 'string' && value.name.length <= 40 && LEVELS.includes(value.level) && GOALS.includes(value.goal) && [2, 3, 4].includes(value.days) && Array.isArray(value.equipment) && value.equipment.every(e => EQUIPMENT.includes(e));
+  return !!value && typeof value.name === 'string' && value.name.length <= 40 && LEVELS.includes(value.level) && GOALS.includes(value.goal) && [2, 3, 4].includes(value.days) && Array.isArray(value.equipment) && value.equipment.every(e => EQUIPMENT.includes(e)) && (value.gender === undefined || GENDERS.includes(value.gender));
 }
 export function localDate(date = new Date()) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
