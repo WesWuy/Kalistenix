@@ -5,7 +5,7 @@ import { extname, resolve, sep } from 'node:path';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml' };
-const allowed = new Set(['index.html', 'app.js', 'training.js', 'styles.css', 'icon.svg']);
+const allowed = new Set(['index.html', 'app.js', 'training.js', 'illustrations.js', 'styles.css', 'icon.svg']);
 const port = Number(process.env.PORT || 4173);
 createServer(async (req, res) => {
   try {

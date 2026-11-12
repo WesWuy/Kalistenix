@@ -38,7 +38,7 @@ This is a **browser-local MVP**. It has no authentication, cloud database, payme
 
 The app has no analytics or application API calls. Google Fonts is used for typography; system fonts provide a fallback. Font loading sends a normal request to Google's font service. It does not send workout data. Hosting providers may retain ordinary request logs.
 
-The SVG artwork represents movement families and is decorative, not an anatomical or step-by-step exercise demonstration.
+Every exercise has original, exercise-specific SVG artwork, with two labeled positions in its movement guide. Equipment, support points, view direction, and movement arrows help distinguish the variations. Library cards, plan thumbnails, and workout guides use the same illustrations. Graphics remain sharp at any screen size and require no external image service. These are simplified position illustrations, to be read alongside technique cues, not anatomical models or a substitute for coaching.
 
 ## Training content
 
@@ -59,6 +59,7 @@ Background references:
 | `index.html` | Application shell and metadata |
 | `app.js` | UI, navigation, session state, storage, backup flow |
 | `training.js` | Exercise catalog, plan generation, progression, date helpers, validation |
+| `illustrations.js` | Original exercise artwork and paired movement guides for all 22 exercises |
 | `styles.css` | Responsive design system |
 | `server.js` | Minimal, allowlisted local preview server |
 | `tests/training.test.js` | Node test suite for training logic and data boundaries |
@@ -77,9 +78,9 @@ The plan test covers every combination of level, goal, training frequency, and e
 
 ## Deploy
 
-The app is static. Publish `index.html`, `app.js`, `training.js`, `styles.css`, and `icon.svg` together on an HTTPS static host. No runtime secrets, backend service, or build output are required. Relative asset paths support a repository subpath such as `/Kalistenix/`. `server.js` is a local development utility and is not needed on a static host.
+The app is static. Publish `index.html`, `app.js`, `training.js`, `illustrations.js`, `styles.css`, and `icon.svg` together on an HTTPS static host. No runtime secrets, backend service, or build output are required. Relative asset paths support a repository subpath such as `/Kalistenix/`. `server.js` is a local development utility and is not needed on a static host.
 
-GitHub Pages is configured with GitHub Actions as its publishing source. The `App checks and Pages` workflow tests every push and pull request, then publishes only the five static app files after successful checks on `main`. Pull requests never deploy. The workflow can also be run manually from the Actions tab.
+GitHub Pages is configured with GitHub Actions as its publishing source. The `App checks and Pages` workflow tests every push and pull request, then publishes only the six static app files after successful checks on `main`. Pull requests never deploy. The workflow can also be run manually from the Actions tab.
 
 The production URL is **https://weswuy.github.io/Kalistenix/**. HTTPS or localhost is required for `crypto.randomUUID()` when starting workouts. The app is not yet an installable or offline-cached PWA.
 
